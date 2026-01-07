@@ -78,7 +78,6 @@ while len(queue) > 0:
     hostname = url.hostname
 
     if hostname not in allowed_hostnames:
-        print(hostname)
         future_places[hostname] = "found"
         queue.pop(0)
         continue
@@ -86,7 +85,8 @@ while len(queue) > 0:
     if url.geturl() in index:
         queue.pop(0)
         continue
-
+    
+    print("processing: ", url.geturl())
     #if input(f"\n{url.geturl()}:") == "s":
     #    queue.pop(0)
     #    continue
@@ -118,9 +118,7 @@ while len(queue) > 0:
                     search_index[word][url.geturl()] = 5
             else:
                 search_index[word] = {url.geturl(): 5}
-
-
-    write_files()
+    #write_files()
     
     queue.pop(0)
 
