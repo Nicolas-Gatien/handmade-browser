@@ -99,14 +99,15 @@ while len(queue) > 0:
         queue.append(link)
 
     keywords = get_keywords(soup.get_text("\n"))
-    for word in keywords:
+    recency_offset = 0.1 / len(keywords)
+    for i, word in enumerate(keywords):
         if word in search_index:
             if url.geturl() in search_index[word]:
-                search_index[word][url.geturl()] += 1
+                search_index[word][url.geturl()] += 1 - (i * recency_offset)
             else:
-                search_index[word][url.geturl()] = 1
+                search_index[word][url.geturl()] = 1 - (i * recency_offset)
         else:
-            search_index[word] = {url.geturl(): 1}
+            search_index[word] = {url.geturl(): 1 - (i * recency_offset)}
     
     if (soup.title):
         title_keywords = get_keywords(soup.title.string)
