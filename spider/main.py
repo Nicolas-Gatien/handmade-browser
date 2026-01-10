@@ -1,8 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-import json
 import nltk
+import sqlite3
 
 def get_links(soup: BeautifulSoup, url: str):
     links = []
@@ -50,25 +50,11 @@ def get_keywords(content: str):
 
     return relevent_tags
 
-def write_files():
-    with open('index.json', 'w') as file:
-        file.write(json.dumps(index, indent=3))
+con = sqlite3.connect('handmade.db')
+cur = con.cursor()
 
-    with open('queue.json', 'w') as file:
-        file.write(json.dumps(queue, indent=3))
-
-    with open('future.json', 'w') as file:
-        file.write(json.dumps(future_places, indent=3))
-
-    with open('reverse.json', 'w') as file:
-        file.write(json.dumps(search_index, indent=3))
-
-
-index = {}
 queue = ["https://leylacornellportfolio.ca/", "https://nicolasgatien.com"]
-future_places = {}
 allowed_hostnames = []
-search_index = {}
 
 for start in queue:
     allowed_hostnames.append(urlparse(start).hostname)
@@ -78,49 +64,39 @@ while len(queue) > 0:
     hostname = url.hostname
 
     if hostname not in allowed_hostnames:
-        future_places[hostname] = "found"
         queue.pop(0)
         continue
-
-    if url.geturl() in index:
+    
+    res = cur.execute("SELECT url FROM sites WHERE url = ?", (url.geturl(),)).fetchall()
+    if len(res) > 0:
         queue.pop(0)
         continue
     
     print("processing: ", url.geturl())
-    #if input(f"\n{url.geturl()}:") == "s":
-    #    queue.pop(0)
-    #    continue
 
     soup = get_soup(url.geturl())
     links = get_links(soup, url.geturl())
 
-    index[url.geturl()] = soup.get_text("\n")
-    for link in links:
-        queue.append(link)
+    data = (url.geturl(), soup.get_text("\n"))
+    cur.execute("INSERT INTO sites VALUES(?, ?)", data)
+
+    for hyperlink in links:
+        link = urlparse(hyperlink)
+        if link.hostname not in allowed_hostnames:
+            continue
+        queue.append(link.geturl())
 
     keywords = get_keywords(soup.get_text("\n"))
     recency_offset = 0.1 / len(keywords)
     for i, word in enumerate(keywords):
-        if word in search_index:
-            if url.geturl() in search_index[word]:
-                search_index[word][url.geturl()] += 1 - (i * recency_offset)
-            else:
-                search_index[word][url.geturl()] = 1 - (i * recency_offset)
-        else:
-            search_index[word] = {url.geturl(): 1 - (i * recency_offset)}
-    
+        data = (word, url.geturl(), 1 - (i * recency_offset))
+        cur.execute("INSERT INTO webIndex VALUES(?, ?, ?)", data)
+
     if (soup.title):
         title_keywords = get_keywords(soup.title.string)
         for word in title_keywords:
-            if word in search_index:
-                if url.geturl() in search_index[word]:
-                    search_index[word][url.geturl()] += 5
-                else:
-                    search_index[word][url.geturl()] = 5
-            else:
-                search_index[word] = {url.geturl(): 5}
-    #write_files()
+            data = (word, url.geturl(), 5)
+            cur.execute("INSERT INTO webIndex VALUES(?, ?, ?)", data)
     
     queue.pop(0)
-
-write_files()
+    con.commit()

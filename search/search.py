@@ -1,10 +1,10 @@
-import json
 import nltk
+import sqlite3
+
+con = sqlite3.connect('handmade.db')
+cur = con.cursor()
 
 index = {}
-
-with open('reverse.json', 'r') as file:
-    index = json.loads(file.read())
 
 while True:
     query = input("\n: ")
@@ -13,17 +13,21 @@ while True:
     final_results = {}
 
     for word in keywords:
-        if word not in index:
+        res = cur.execute('SELECT * FROM webIndex WHERE keyword = ?', (word,)).fetchall()
+        if len(res) == 0:
             continue
+
+        for result in res:
+            word = result[0]
+            url = result[1]
+            score = result[2]
         
-        results = index[word]
-        for url in results:
             if url in final_results:
-                final_results[url] += results[url]
+                final_results[url] += score
             else:
-                final_results[url] = results[url]
+                final_results[url] = score
         
     final_results = dict(sorted(final_results.items(), key=lambda item: item[1], reverse=True))
     final_results = list(final_results.items())[0:10]
     for i, result in enumerate(final_results):
-        print(i + 1, ": ", result[0], " (", result[1], ")")
+        print(i + 1, ": ", result[0])
