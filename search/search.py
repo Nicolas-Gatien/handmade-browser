@@ -1,13 +1,10 @@
 import nltk
 import sqlite3
 
-con = sqlite3.connect('handmade.db')
-cur = con.cursor()
+def search(query) -> list[str]:
+    con = sqlite3.connect('handmade.db')
+    cur = con.cursor()
 
-index = {}
-
-while True:
-    query = input("\n: ")
     keywords = nltk.WhitespaceTokenizer().tokenize(query)
 
     final_results = {}
@@ -29,5 +26,5 @@ while True:
         
     final_results = dict(sorted(final_results.items(), key=lambda item: item[1], reverse=True))
     final_results = list(final_results.items())[0:10]
-    for i, result in enumerate(final_results):
-        print(i + 1, ": ", result[0])
+    
+    return final_results
