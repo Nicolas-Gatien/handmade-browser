@@ -1,23 +1,35 @@
 import nltk
-import sqlite3
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
 
 def search(query) -> list[str]:
-    con = sqlite3.connect('handmade.db')
-    cur = con.cursor()
+    load_dotenv()
+
+    url: str = os.environ.get("SUPABASE_URL")
+    key: str = os.environ.get("SUPABASE_KEY")
+    supabase: Client = create_client(url, key)
 
     keywords = nltk.WhitespaceTokenizer().tokenize(query)
 
     final_results = {}
 
     for word in keywords:
-        res = cur.execute('SELECT * FROM webIndex WHERE keyword = ?', (word,)).fetchall()
-        if len(res) == 0:
+        res = (
+            supabase
+            .table("index")
+            .select("*")
+            .eq("keyword", word)
+            .execute()
+        )
+
+        if len(res.data) == 0:
             continue
 
-        for result in res:
-            word = result[0]
-            url = result[1]
-            score = result[2]
+        for result in res.data:
+            word = result['keyword']
+            url = result['url']
+            score = result['score']
         
             if url in final_results:
                 final_results[url] += score
